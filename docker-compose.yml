@@ -1,0 +1,17 @@
+services:
+  pi-monitor:
+    build: .
+    container_name: pi-monitor
+    restart: unless-stopped
+    ports:
+      - "${MONITOR_PORT}:${MONITOR_PORT}"
+    env_file:
+      - .env
+    networks:
+      - pi-network
+    volumes:
+      - ./app-data:/app/data
+
+networks:
+  pi-network:
+    external: true

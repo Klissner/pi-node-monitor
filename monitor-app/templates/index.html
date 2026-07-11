@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="{{ current_lang if current_lang else 'de' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi-Network Node Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            background-color: #060b16;
+            background-image: 
+                radial-gradient(circle at 50% 30%, rgba(0, 242, 254, 0.08) 0%, transparent 65%),
+                linear-gradient(rgba(0, 242, 254, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 254, 0.015) 1px, transparent 1px);
+            background-size: 100% 100%, 30px 30px, 30px 30px;
+            color: #e2f8ff;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.08) 50%),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 30%);
+            z-index: 99999;
+            pointer-events: none;
+            background-size: 100% 4px, 100% 100%;
+        }
+
+        .hud-panel {
+            background: linear-gradient(145deg, rgba(10, 20, 38, 0.9) 0%, rgba(5, 10, 20, 0.95) 100%);
+            border: 1px solid rgba(0, 242, 254, 0.6);
+            box-shadow: 
+                inset 0 0 15px rgba(0, 242, 254, 0.1),
+                0 8px 32px rgba(0, 0, 0, 0.5),
+                0 0 10px rgba(0, 242, 254, 0.15);
+            backdrop-filter: blur(8px);
+            border-radius: 6px;
+        }
+
+        .cyber-glow-text {
+            color: #00f2fe;
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+        }
+
+        .hud-header-panel {
+            border-bottom: 3px double rgba(0, 242, 254, 0.8);
+        }
+
+        header div div:last-child {
+            white-space: nowrap;
+        }
+
+        .pulse-cyan {
+            box-shadow: 0 0 12px #00f2fe;
+            animation: pulse 2.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 242, 254, 0.5); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(0, 242, 254, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 242, 254, 0); }
+        }
+
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+    </style>
+</head>
+<body class="p-4 min-h-screen flex flex-col justify-between">
+
+    <header class="hud-panel hud-header-panel p-4 mb-6 grid grid-cols-2 md:grid-cols-6 gap-4 text-center relative overflow-hidden">
+        <div>
+            <div id="lbl-status" class="text-[10px] uppercase tracking-widest opacity-50 mb-1">// STATUS</div>
+            <div class="flex items-center justify-center gap-2">
+                <span id="status-dot" class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+                <span id="status" class="text-lg font-black text-red-500 tracking-wider">OFFLINE</span>
+            </div>
+        </div>
+        <div>
+            <div id="lbl-block-current" class="text-[10px] uppercase tracking-widest opacity-50 mb-1">// AKTUELLER BLOCK</div>
+            <div id="block-current" class="text-xl font-black cyber-glow-text">-</div>
+        </div>
+        <div>
+            <div id="lbl-block-total" class="text-[10px] uppercase tracking-widest opacity-50 mb-1">// GESAMT-BLÖCKE</div>
+            <div id="block-total" class="text-xl font-bold text-gray-400">-</div>
+        </div>
+        <div>
+            <div id="lbl-delay" class="text-[10px] uppercase tracking-widest opacity-50 mb-1">// LETZTER BLOCK VOR</div>
+            <div id="delay" class="text-xl font-bold text-amber-400">-</div>
+        </div>
+        <div>
+            <div id="lbl-peers" class="text-[10px] uppercase tracking-widest opacity-50 mb-1">// PEERS</div>
+            <div id="peers" class="text-xl font-black cyber-glow-text">-</div>
+        </div>
+        <div>
+            <div id="lbl-uptime" class="text-[10px] uppercase tracking-widest opacity-50 mb-1">// UPTIME</div>
+            <div id="uptime" class="text-xl font-bold text-green-400">-</div>
+        </div>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow mb-6">
+        
+        <section class="hud-panel p-5 flex flex-col justify-between border-t-4 border-t-[#00f2fe]">
+            <div>
+                <h2 id="title-core" class="text-sm font-black cyber-glow-text tracking-wider mb-4 uppercase">🔑 System-Kerndaten</h2>
+                <div class="space-y-3 text-sm" id="node-info-content">
+                    <span class="opacity-40 animate-pulse">Warte auf Signal...</span>
+                </div>
+            </div>
+            
+            <div class="mt-6 pt-4 border-t border-gray-900/60 bg-black/30 p-3 rounded border border-gray-950">
+                <span id="title-config" class="text-[10px] uppercase tracking-wider opacity-50 block mb-2 font-bold text-cyan-400">TERMINAL / KONFIG_ÜBERSCHREIBEN</span>
+                <div class="flex flex-wrap md:flex-nowrap gap-2">
+                    <input id="input-ip" type="text" value="{{ node_ip }}" class="bg-black/60 border border-[#00f2fe]/30 text-xs p-1.5 focus:border-[#00f2fe] focus:outline-none rounded text-white font-mono w-full md:w-5/12">
+                    <input id="input-port" type="text" value="{{ node_port }}" class="bg-black/60 border border-[#00f2fe]/30 text-xs p-1.5 focus:border-[#00f2fe] focus:outline-none rounded text-white font-mono w-1/2 md:w-3/12">
+                    
+                    <select id="input-lang" class="bg-black border border-[#00f2fe]/30 text-xs p-1.5 focus:border-[#00f2fe] focus:outline-none rounded text-cyan-400 font-mono w-1/2 md:w-2/12 cursor-pointer">
+                        <option value="de" {% if current_lang == 'de' %}selected{% endif %}>DE</option>
+                        <option value="en" {% if current_lang == 'en' %}selected{% endif %}>EN</option>
+                    </select>
+                    
+                    <button onclick="changeNodeConfig()" class="bg-[#00f2fe] text-black text-xs font-black px-4 py-1.5 rounded hover:bg-cyan-300 shadow-[0_0_12px_rgba(0,242,254,0.4)] transition w-full md:w-2/12 cursor-pointer">SET</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="hud-panel p-5 border-t-4 border-t-[#00f2fe]">
+            <h2 id="title-matrix" class="text-sm font-black cyber-glow-text tracking-wider mb-4 uppercase">📡 Konsens & Quorum-Matrix</h2>
+            <div class="space-y-3 text-sm" id="quorum-content">
+                <span class="opacity-40 animate-pulse">Scanne Netzwerk-Matrix...</span>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center hud-panel p-4 border-b-2 border-b-[#00f2fe]/50 text-xs">
+        <div class="flex items-center gap-4 col-span-2 bg-black/20 p-2 rounded border border-gray-900/40">
+            <img src="/api/qrcode" alt="QR" class="w-16 h-20 object-cover border border-[#00f2fe]/30 rounded shadow-[0_0_8px_rgba(0,242,254,0.1)]">
+            <div>
+                <p id="donation-text" class="font-bold cyber-glow-text mb-1 tracking-wider">Unterstütze dieses Projekt mit einer Spende! Weitere Spendenlinks findest Du unter:</p>
+                <p class="text-gray-300 font-mono text-[11px] select-all mb-1 bg-black/50 p-1 rounded border border-gray-950"><span class="text-[#00f2fe] font-bold">Pi-Wallet:</span> GCOQMXIRFWMNBV73GDPDYWL4BT7AUGWOPZWIZKPHB7WFRY5TNUFWAJRR</p>
+                <p class="text-blue-400 font-mono text-[10px]"><a href="https://www.ksc-llp.uk/donateyoutube" target="_blank" class="hover:underline">📎 https://www.ksc-llp.uk/donateyoutube</a></p>
+            </div>
+        </div>
+
+        <div class="text-right border-t md:border-t-0 md:border-l border-gray-900 pt-2 md:pt-0 md:pl-4 font-mono flex flex-col justify-between h-full py-1">
+            <div id="update-status" class="text-xs font-bold text-gray-500">
+                PRÜFE STATUS...
+            </div>
+            <div class="text-[10px] text-cyan-400/80 font-bold tracking-wide mt-2">
+                {{ monitorversion }}
+            </div>
+            <div class="text-[10px] cyber-glow-text tracking-wider opacity-90">
+                © 2026 KSC LLP | by Michael Klissner
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const refreshInterval = {{ refresh }} * 1000;
+        
+        const translations = {
+            de: {
+                status: "// STATUS",
+                block_current: "// AKTUELLER BLOCK",
+                block_total: "// GESAMT-BLÖCKE",
+                delay: "// LETZTER BLOCK VOR",
+                peers: "// PEERS",
+                uptime: "// UPTIME",
+                core_title: "🔑 System-Kerndaten",
+                matrix_title: "📡 Konsens & Quorum-Matrix",
+                donation: "Unterstütze dieses Projekt mit einer Spende! Weitere Spendenlinks findest Du unter:",
+                update_ok: "✓ System-Status aktuell",
+                update_avail: "⚠️ Update verfügbar!",
+                build: "Software-Version:",
+                network: "Netzwerk-Identifikation:",
+                proto: "Protokoll-Version:",
+                pending: "Wartende Peers:",
+                started: "Letzter Startzeitpunkt:",
+                hash: "Letzter Block-Hash:",
+                node_id: "Knoten-Identität:",
+                phase: "Konsens-Phase:",
+                fault: "Ausfalltoleranz (Knoten):",
+                lag: "Netzwerk-Verzögerung:",
+                agree: "Zustimmende Knoten:",
+                missing: "Fehlende Antworten:",
+                transitive: "Transitive Knotenmenge:",
+                intersection: "Sicherheits-Schnittmenge:",
+                config_title: "TERMINAL / KONFIG_ÜBERSCHREIBEN",
+                incentive_kpi: "Ertrags-Index (KPI):",
+                tt_phase: "Zeigt den aktuellen Zustand des Stellar/Pi Consensus Protocols (SCP).",
+                tt_fault: "Wie viele Validierungsknoten in deiner Quorum-Gruppe zeitgleich ausfallen dürfen, ohne dass deine Node die Synchronisation verliert.",
+                tt_intersection: "Prüft, ob deine Quorum-Schnittmenge mit dem Hauptnetzwerk mathematisch gegen Spaltungen geschützt ist.",
+                tt_kpi: "Schätzwert! Berechnet die theoretische Effizienz deiner Node für den Pi-Mining Bonus. 100% bedeutet maximaler Ertrag durch perfekten Sync und niedrigsten Lag.",
+                phase_explain: {
+                    "EXTERNALIZE": "Synchronisiert & Aktiv (Node hat den Block final bestätigt)",
+                    "NOMINATE": "Stimmt ab... (Knoten schlägt neue Transaktionsblöcke vor)",
+                    "PREPARE": "Bereitet Block vor... (Validierung läuft im Netzwerk)",
+                    "COMMIT": "Bestätigt... (Block wird festgeschrieben)",
+                    "UNKNOWN": "Warte auf Netzwerk-Antwort..."
+                }
+            },
+            en: {
+                status: "// STATUS",
+                block_current: "// CURRENT BLOCK",
+                block_total: "// TOTAL BLOCKS",
+                delay: "// LAST BLOCK AGO",
+                peers: "// PEERS",
+                uptime: "// UPTIME",
+                core_title: "🔑 System Core Data",
+                matrix_title: "📡 Consensus & Quorum Matrix",
+                donation: "Support this project with a donation! Find more donation links below:",
+                update_ok: "✓ System status up to date",
+                update_avail: "⚠️ Update available!",
+                build: "Software Version:",
+                network: "Network ID:",
+                proto: "Protocol Version:",
+                pending: "Pending Peers:",
+                started: "Initial Start Time:",
+                hash: "Last Ledger Hash:",
+                node_id: "Node Identity:",
+                phase: "Consensus Phase:",
+                fault: "Fault Tolerance (Nodes):",
+                lag: "Network Lag:",
+                agree: "Agreeing Nodes:",
+                missing: "Missing Responses:",
+                transitive: "Transitive Node Count:",
+                intersection: "Security Intersection:",
+                config_title: "TERMINAL / OVERRIDE_CONFIG",
+                incentive_kpi: "Incentive Index (KPI):",
+                tt_phase: "Shows the current state of the Stellar/Pi Consensus Protocol (SCP).",
+                tt_fault: "How many validator nodes in your quorum slice can fail simultaneously without causing your node to lose sync.",
+                tt_intersection: "Verifies if your quorum intersection is mathematically secured against ledger splits.",
+                tt_kpi: "Estimated value! Calculates the theoretical efficiency of your node for the Pi mining bonus. 100% means maximum yield through perfect sync and lowest lag.",
+                phase_explain: {
+                    "EXTERNALIZE": "Synced & Active (Node successfully finalized the ledger block)",
+                    "NOMINATE": "Voting... (Node is proposing new transaction blocks)",
+                    "PREPARE": "Preparing block... (Validation is running across network)",
+                    "COMMIT": "Committing... (Block is being sealed)",
+                    "UNKNOWN": "Waiting for network response..."
+                }
+            }
+        };
+
+        let activeLang = "{{ current_lang if current_lang else 'de' }}";
+
+        function formatTime(isoString) {
+            if(!isoString) return "-";
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleString(activeLang === 'de' ? 'de-DE' : 'en-US');
+            } catch(e) { return isoString; }
+        }
+
+        function applyLanguage() {
+            const t = translations[activeLang];
+            document.getElementById('lbl-status').innerText = t.status;
+            document.getElementById('lbl-block-current').innerText = t.block_current;
+            document.getElementById('lbl-block-total').innerText = t.block_total;
+            document.getElementById('lbl-delay').innerText = t.delay;
+            document.getElementById('lbl-peers').innerText = t.peers;
+            document.getElementById('lbl-uptime').innerText = t.uptime;
+            document.getElementById('title-core').innerText = t.core_title;
+            document.getElementById('title-matrix').innerText = t.matrix_title;
+            document.getElementById('donation-text').innerText = t.donation;
+            document.getElementById('title-config').innerText = t.config_title;
+            document.documentElement.lang = activeLang;
+        }
+
+        async function updateDashboard() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+
+                applyLanguage();
+                const t = translations[activeLang];
+
+                if (data.online && data.raw) {
+                    const raw = data.raw.info ? data.raw.info : data.raw;
+                    
+                    const statusText = (raw.state || "SYNCED").toUpperCase();
+                    document.getElementById('status').innerText = statusText;
+                    document.getElementById('status').className = "text-lg font-black text-green-400 tracking-wider";
+                    document.getElementById('status-dot').className = "w-2 h-2 rounded-full bg-green-400 inline-block pulse-cyan";
+                    
+                    document.getElementById('block-current').innerText = raw.ledger?.num || "-";
+                    
+                    const totalLedgers = raw.quorum?.qset?.ledger;
+                    document.getElementById('block-total').innerText = totalLedgers !== undefined ? (Number(totalLedgers) + 1) : "-";
+                    
+                    const age = raw.ledger?.age !== undefined ? raw.ledger.age : 0;
+                    const delayEl = document.getElementById('delay');
+                    delayEl.innerText = age + "s";
+                    delayEl.className = age > 10 ? "text-xl font-bold text-red-500 animate-pulse" : "text-xl font-bold text-green-400";
+
+                    document.getElementById('peers').innerText = raw.peers?.authenticated_count || "0";
+                    
+                    if(raw.startedOn) {
+                        const start = new Date(raw.startedOn);
+                        const diff = Math.floor((new Date() - start) / 1000);
+                        const days = Math.floor(diff / 86400);
+                        const hours = Math.floor((diff % 86400) / 3600);
+                        document.getElementById('uptime').innerText = days + "d " + hours + "h";
+                    }
+
+                    // MODUL 01
+                    document.getElementById('node-info-content').innerHTML = 
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70">' + t.build + '</span><span class="font-mono text-cyan-400 font-bold">' + (raw.build || '-') + '</span></div>' +
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70">' + t.network + '</span><span class="font-mono text-gray-300">' + (raw.network || '-') + '</span></div>' +
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70">' + t.proto + '</span><span class="font-mono text-gray-300">' + (raw.protocol_version || '-') + '</span></div>' +
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70">' + t.pending + '</span><span class="font-mono text-amber-400 font-bold">' + (raw.peers?.pending_count || '0') + '</span></div>' +
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70">' + t.started + '</span><span class="font-mono text-xs text-gray-300">' + formatTime(raw.startedOn) + '</span></div>' +
+                        '<div class="flex flex-col py-1.5"><span class="opacity-70 mb-1">' + t.hash + '</span><span class="font-mono text-[11px] text-gray-400 bg-black/40 p-1.5 rounded border border-gray-950 break-all">' + (raw.ledger?.hash || '-') + '</span></div>';
+
+                    // MODUL 02
+                    const q = raw.quorum || {};
+                    const rawPhase = (q.qset?.phase || "UNKNOWN").toUpperCase();
+                    const phaseText = t.phase_explain[rawPhase] || t.phase_explain["UNKNOWN"];
+                    const isIntersectionOk = q.transitive?.intersection ? true : false;
+                    
+                    // Schätzwert-KPI Berechnung
+                    let kpiScore = 100;
+                    const lag = q.qset?.lag_ms || 0;
+                    if (lag > 200) kpiScore -= 10;
+                    if (lag > 500) kpiScore -= 20;
+                    if (q.qset?.missing > 0) kpiScore -= (q.qset.missing * 15);
+                    if (statusText !== "SYNCED!") kpiScore -= 30;
+                    if (kpiScore < 0) kpiScore = 0;
+
+                    let kpiColor = "text-green-400";
+                    if (kpiScore < 90) kpiColor = "text-amber-400";
+                    if (kpiScore < 60) kpiColor = "text-red-400 animate-pulse";
+
+                    document.getElementById('quorum-content').innerHTML = 
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70">' + t.node_id + '</span><span class="font-mono cyber-glow-text font-bold text-xs select-all">' + (q.node || '-') + '</span></div>' +
+                        
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5 bg-cyan-950/20 px-1 rounded"><span class="font-bold text-cyan-400" title="' + t.tt_kpi + '" data-tooltip>' + t.incentive_kpi + ' ⓘ</span><span class="font-mono font-black ' + kpiColor + '">' + kpiScore + ' %</span></div>' +
+
+                        '<div class="border-b border-gray-900/30 py-1.5 flex flex-col">' +
+                            '<div class="flex justify-between items-center"><span class="opacity-70" title="' + t.tt_phase + '" data-tooltip>' + t.phase + ' ⓘ</span><span class="font-mono text-green-400 font-black tracking-wider">' + rawPhase + '</span></div>' +
+                            '<div class="text-[11px] text-gray-400 font-sans mt-0.5 opacity-90">➔ ' + phaseText + '</div>' +
+                        '</div>' +
+                        
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70" title="' + t.tt_fault + '" data-tooltip>' + t.fault + ' ⓘ</span><span class="font-mono ' + (q.qset?.fail_at > 1 ? 'text-green-400' : 'text-red-400') + '">' + (q.qset?.fail_at !== undefined ? q.qset.fail_at : '-') + '</span></div>' +
+                        
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70">' + t.lag + '</span><span class="font-mono text-gray-300">' + lag + ' ms</span></div>' +
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70">' + t.agree + '</span><span class="font-mono text-green-400 font-bold">' + (q.qset?.agree || '0') + '</span></div>' +
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70">' + t.missing + '</span><span class="font-mono ' + (q.qset?.missing > 0 ? 'text-red-400 font-bold animate-pulse' : 'text-gray-500') + '">' + (q.qset?.missing || '0') + '</span></div>' +
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70">' + t.transitive + '</span><span class="font-mono text-gray-300">' + (q.transitive?.node_count || '-') + '</span></div>' +
+                        
+                        '<div class="flex justify-between border-b border-gray-900/30 py-1.5"><span class="opacity-70" title="' + t.tt_intersection + '" data-tooltip>' + t.intersection + ' ⓘ</span><span class="font-mono px-2 py-0.5 rounded text-xs font-black ' + (isIntersectionOk ? 'bg-green-950 text-green-400 border border-green-500/30' : 'bg-red-950 text-red-400 border border-red-500/30') + '">' + (isIntersectionOk ? 'SECURE_OK' : 'CRITICAL_FAIL') + '</span></div>';
+
+                } else {
+                    setOffline();
+                }
+
+                const updateStatusDiv = document.getElementById('update-status');
+                if (data.update?.available) {
+                    updateStatusDiv.innerHTML = '<span class="text-amber-500 font-black animate-pulse">⚠️ ' + t.update_avail + '</span>';
+                } else {
+                    updateStatusDiv.innerHTML = '<span class="text-green-400 font-mono text-[11px]">' + t.update_ok + '</span>';
+                }
+
+            } catch (error) {
+                console.error("HUD Error:", error);
+                setOffline();
+            }
+        }
+
+        function setOffline() {
+            applyLanguage();
+            document.getElementById('status').innerText = "OFFLINE";
+            document.getElementById('status').className = "text-lg font-black text-red-500 tracking-wider";
+            document.getElementById('status-dot').className = "w-2 h-2 rounded-full bg-red-500 inline-block";
+            document.getElementById('block-current').innerText = "-";
+            document.getElementById('block-total').innerText = "-";
+            document.getElementById('peers').innerText = "-";
+            document.getElementById('uptime').innerText = "-";
+            document.getElementById('delay').innerText = "-";
+            document.getElementById('delay').className = "text-xl font-bold";
+            
+            document.getElementById('node-info-content').innerHTML = '<span class="text-red-500/70 font-mono animate-pulse">// Link Offline</span>';
+            document.getElementById('quorum-content').innerHTML = '<span class="text-red-500/70 font-mono animate-pulse">// Link Offline</span>';
+        }
+
+        async function changeNodeConfig() {
+            const ip = document.getElementById('input-ip').value;
+            const port = document.getElementById('input-port').value;
+            activeLang = document.getElementById('input-lang').value;
+            
+            const response = await fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip, port })
+            });
+            if (response.ok) {
+                updateDashboard();
+            }
+        }
+
+        applyLanguage();
+        setInterval(updateDashboard, refreshInterval);
+        updateDashboard();
+    </script>
+</body>
+</html>
