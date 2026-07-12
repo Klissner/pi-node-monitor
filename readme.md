@@ -46,6 +46,7 @@ Das Docker-Setup unterstützt Multi-Architektur-Builds und läuft nativ auf folg
 
 ### Images
 ghcr.io/Klissner/pi-node-monitor:beta-0.01-amd64
+
 ghcr.io/Klissner/pi-node-monitor:beta-0.01-arm64
 
 ---
@@ -200,6 +201,7 @@ The Docker setup supports multi-architecture builds and runs natively on:
 
 ### Images
 ghcr.io/Klissner/pi-node-monitor:beta-0.01-amd64
+
 ghcr.io/Klissner/pi-node-monitor:beta-0.01-arm64
 
 ---
