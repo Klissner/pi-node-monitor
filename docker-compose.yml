@@ -1,17 +1,12 @@
 services:
   pi-monitor:
-    build: .
+    image: ghcr.io/klissner/pi-node-monitor:beta-0.01-amd64      # x86 systems
+    # image: ghcr.io/klissner/pi-node-monitor:beta-0.01-arm64    # Raspberry Pi / Apple Silicon
     container_name: pi-monitor
     restart: unless-stopped
     ports:
       - "${MONITOR_PORT}:${MONITOR_PORT}"
     env_file:
       - .env
-    networks:
-      - pi-network
     volumes:
       - ./app-data:/app/data
-
-networks:
-  pi-network:
-    external: true
