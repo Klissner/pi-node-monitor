@@ -80,17 +80,28 @@ services:
 Erstelle eine `.env`-Datei im selben Verzeichnis wie die `docker-compose.yml` und passe die Werte an deine Umgebung an:
 
 ```env
-# Port, auf dem das Dashboard erreichbar sein soll (Host & Container-intern match)
-MONITOR_PORT=8080
 
 # IP-Adresse der zu überwachenden Pi-Node (z.B. 127.0.0.1 oder die LAN-IP)
 NODE_IP=127.0.0.1
 
+
 # Interner API-Port der Pi-Node (Standard: 11626)
 NODE_PORT=11626
 
-# Aktualisierungsintervall des Dashboards in Sekunden
-MONITOR_REFRESH=5
+# Port, auf dem das Dashboard erreichbar sein soll (Host & Container-intern match)
+MONITOR_PORT=8080
+
+# Aktualisierungsintervall des Dashboards in Sekunden (Standard: 5
+REFRESH_INTERVAL=5
+
+# Teimzohne
+TIMEZONE=Asia/Bangkok
+
+# Pi-Monitor Spracheinstellung de oder en (Standard: de für Deutschland)
+LANGUAGE=de
+
+# Update Überprüfung (Nicht verändern)
+UPDATE_API_URL=https://api.github.com/repos/pi-apps/pi-node-docker/releases/latest
 
 ```
 
@@ -236,17 +247,28 @@ services:
 Create a `.env` file in the same directory as your `docker-compose.yml` and adjust the parameters for your network:
 
 ```env
-# Port where the web dashboard will be exposed (Host & Container match)
-MONITOR_PORT=8080
 
-# IP address of the Pi-Node you want to monitor (e.g., 127.0.0.1 or your local LAN IP)
+# IP address of the Pi node to be monitored (e.g., 127.0.0.1 or the LAN IP)
 NODE_IP=127.0.0.1
 
-# Internal API port of the Pi-Node core software (Default: 11626)
+
+# Internal API port of the Pi node (default: 11626)
 NODE_PORT=11626
 
-# Dashboard refresh interval in seconds
-MONITOR_REFRESH=5
+# Port on which the dashboard should be accessible (must match both the host and the container)
+MONITOR_PORT=8080
+
+# Dashboard refresh interval in seconds (default: 5)
+REFRESH_INTERVAL=5
+
+# Time zone
+TIMEZONE=Asia/Bangkok
+
+# Pi-Monitor language setting: de or en (default: de for Germany)
+LANGUAGE=de
+
+# Update check (do not change)
+UPDATE_API_URL=https://api.github.com/repos/pi-apps/pi-node-docker/releases/latest
 
 ```
 
